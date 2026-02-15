@@ -4,6 +4,7 @@ namespace App\Services;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 
@@ -15,7 +16,8 @@ class TitoGraphQLService
     {
         $this->client = new Client([
             'base_uri' => config('tito.api_url'),
-            'timeout' => 30,
+            'connect_timeout' => 10,
+            'timeout' => 60,
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
@@ -72,9 +74,10 @@ class TitoGraphQLService
             ]);
         } catch (GuzzleException $e) {
             Log::warning('Tito GraphQL request failed', ['message' => $e->getMessage()]);
-            $code = $e->hasResponse() ? $e->getResponse()->getStatusCode() : 500;
+            $code = 500;
             $body = ['errors' => [['message' => $e->getMessage()]]];
-            if ($e->hasResponse()) {
+            if ($e instanceof RequestException && $e->hasResponse()) {
+                $code = $e->getResponse()->getStatusCode();
                 $decoded = json_decode($e->getResponse()->getBody()->getContents(), true);
                 if (is_array($decoded)) {
                     $body = $decoded;
