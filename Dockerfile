@@ -15,6 +15,15 @@ COPY . .
 # Generate app key if not set, clear caches
 RUN php artisan package:discover --ansi || true
 
+# Node stage: compile Vite/Tailwind assets
+FROM node:20-alpine AS assets
+WORKDIR /app
+COPY package.json ./
+RUN npm install
+COPY vite.config.js postcss.config.js tailwind.config.js ./
+COPY resources/ ./resources/
+RUN npm run build
+
 # Runtime stage
 FROM php:8.2-cli
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -23,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app /var/www/html
+COPY --from=assets /app/public/build /var/www/html/public/build
 WORKDIR /var/www/html
 
 # Ensure storage directories exist with correct permissions
