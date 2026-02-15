@@ -18,7 +18,7 @@ COPY .env.example .env
 
 # Runtime stage (PHP only; use artisan serve so Render PORT works)
 FROM php:8.2-cli
-RUN apt-get update && apt-get install -y --no-install-recommends zip unzip libzip-dev libonig-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends zip unzip libzip-dev libonig-dev libxml2-dev \
     && docker-php-ext-install zip pcntl mbstring xml ctype json tokenizer \
     && rm -rf /var/lib/apt/lists/*
 
