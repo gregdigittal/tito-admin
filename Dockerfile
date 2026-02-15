@@ -5,9 +5,8 @@ WORKDIR /app
 # Copy composer files first for Docker layer caching
 COPY composer.json composer.lock ./
 
-# Install dependencies (--ignore-platform-req=php because builder has PHP 8.4
-# but we target 8.2; the lock file already pins 8.2-compatible versions)
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
+# Install dependencies (--no-scripts: artisan does not exist yet; we run package:discover after COPY . .)
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
     --ignore-platform-req=php
 
 # Copy full application code
