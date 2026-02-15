@@ -1,30 +1,34 @@
-# Build stage: create Laravel app and install deps
+# Build stage: install Composer dependencies from project lock file
 FROM composer:2 AS builder
 WORKDIR /app
 
-RUN composer create-project laravel/laravel . --no-interaction \
-    && composer require livewire/livewire guzzlehttp/guzzle --no-interaction
+# Copy composer files first for Docker layer caching
+COPY composer.json composer.lock ./
 
-# Overlay Tito Admin code (merge into Laravel skeleton)
-COPY config/ ./config/
-COPY app/Services ./app/Services
-COPY app/Http/Middleware ./app/Http/Middleware
-COPY app/Livewire ./app/Livewire
-COPY app/Providers/AppServiceProvider.php ./app/Providers/AppServiceProvider.php
-COPY bootstrap/app.php ./bootstrap/app.php
-COPY routes/ ./routes/
-COPY resources/ ./resources/
-COPY .env.example .env
+# Install dependencies (--ignore-platform-req=php because builder has PHP 8.4
+# but we target 8.2; the lock file already pins 8.2-compatible versions)
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
+    --ignore-platform-req=php
 
-# Runtime stage (PHP only; use artisan serve so Render PORT works)
+# Copy full application code
+COPY . .
+
+# Generate app key if not set, clear caches
+RUN php artisan package:discover --ansi || true
+
+# Runtime stage
 FROM php:8.2-cli
-# Only install extensions that need -dev libs; tokenizer/ctype/json are in php:8.2-cli (tokenizer Makefile can fail in docker-php-ext-install)
-RUN apt-get update && apt-get install -y --no-install-recommends zip unzip libzip-dev libonig-dev libxml2-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        zip unzip libzip-dev libonig-dev libxml2-dev \
     && docker-php-ext-install zip pcntl mbstring xml \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app /var/www/html
 WORKDIR /var/www/html
+
+# Ensure storage directories exist with correct permissions
+RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
 
 # Render sets PORT; default 8080 for local
 ENV PORT=8080
