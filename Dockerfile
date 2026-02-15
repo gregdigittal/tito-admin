@@ -26,7 +26,8 @@ COPY --from=builder /app /var/www/html
 WORKDIR /var/www/html
 
 # Ensure storage directories exist with correct permissions
-RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
+# Note: /bin/sh (dash) does not support brace expansion — spell out each path
+RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
 # Render sets PORT; default 8080 for local
