@@ -43,6 +43,9 @@ class TitoGraphQLService
             if ($this->refreshToken()) {
                 $token = Session::get('tito_access_token');
                 $response = $this->post($query, $variables, $token);
+            } else {
+                $this->clearTokens();
+                throw new \Illuminate\Auth\AuthenticationException('Session expired. Please log in again.');
             }
         }
 
@@ -112,10 +115,12 @@ GQL;
         $body = $response['body'] ?? [];
         $data = $body['data']['refreshStaffMemberAccessToken'] ?? null;
         if ($data && !empty($data['accessToken']['token'])) {
-            Session::put('tito_access_token', $data['accessToken']['token']);
+            $token = $data['accessToken']['token'];
+            Session::put('tito_access_token', $token);
             if (!empty($data['accessToken']['refreshToken'])) {
                 Session::put('tito_refresh_token', $data['accessToken']['refreshToken']);
             }
+            $this->storeRolesFromToken($token);
             return true;
         }
         Session::forget(['tito_access_token', 'tito_refresh_token']);
@@ -123,7 +128,7 @@ GQL;
     }
 
     /**
-     * Store tokens in session after login.
+     * Store tokens in session after login. Decodes JWT to extract realm roles for RBAC.
      */
     public function storeTokens(string $accessToken, string $refreshToken, ?int $expiresIn = null): void
     {
@@ -132,6 +137,20 @@ GQL;
         if ($expiresIn !== null) {
             Session::put('tito_token_expires_in', $expiresIn);
         }
+        $this->storeRolesFromToken($accessToken);
+    }
+
+    /**
+     * Decode JWT and store realm roles in session for RBAC.
+     */
+    protected function storeRolesFromToken(string $accessToken): void
+    {
+        $parts = explode('.', $accessToken);
+        if (count($parts) >= 2) {
+            $payload = json_decode(base64_decode(strtr($parts[1], '-_', '+/')), true);
+            $roles = is_array($payload) ? ($payload['realm_access']['roles'] ?? []) : [];
+            Session::put('tito_staff_roles', $roles);
+        }
     }
 
     /**
@@ -139,6 +158,6 @@ GQL;
      */
     public function clearTokens(): void
     {
-        Session::forget(['tito_access_token', 'tito_refresh_token', 'tito_token_expires_in']);
+        Session::forget(['tito_access_token', 'tito_refresh_token', 'tito_token_expires_in', 'tito_staff_roles']);
     }
 }

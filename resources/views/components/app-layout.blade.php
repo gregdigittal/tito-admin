@@ -15,16 +15,11 @@
             $roles = session('tito_staff_roles', []);
             $canStaff = empty($roles) || in_array('BACKOFFICE', $roles) || in_array('TITO_ADMIN', $roles);
             $canJournals = empty($roles) || in_array('BACKOFFICE', $roles) || in_array('TITO_ADMIN', $roles) || in_array('FINANCE_ADMIN', $roles);
-            $canConfig = empty($roles) || in_array('TITO_ADMIN', $roles) || in_array('FINANCE_ADMIN', $roles);
         @endphp
         <nav class="border-b border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
             <div class="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
                 <a href="{{ route('dashboard') }}" class="font-semibold text-gray-900 dark:text-white">Tito Admin</a>
                 <div class="flex items-center gap-4">
-                    @if ($canConfig)
-                        <a href="{{ route('config.topup') }}" class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">Top-up config</a>
-                        <a href="{{ route('config.settlement') }}" class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">Settlement / Sweep</a>
-                    @endif
                     @if ($canStaff)
                         <a href="{{ route('staff.index') }}" class="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">Staff</a>
                     @endif
